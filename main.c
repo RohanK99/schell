@@ -2,8 +2,8 @@
 #include <string.h> // strlen
 #include <stdlib.h> // exit
 #include <unistd.h> // syscalls
+#include <sys/wait.h> // waitpid
 
-#define LINE_BUFFER 1024
 #define TOK_DELIM " \t\r\n\a"
 #define TOK_BUFSIZE 64
 
@@ -17,13 +17,49 @@ char prompt[] = "schell> "; // command line prompt
 
 char* read_input();
 void tokenize_command(char* input);
+int execute(Command* cmd);
+int executeSystemCommand(Command* cmd);
 
 void poll() {
     char* input;
+    Command* cmd;
     
     printf("%s", prompt);
     input = read_input();
     tokenize_command(input);
+}
+
+int execute(Command* cmd) {
+    
+    if (cmd->argc == 0) {
+        return 1; // empty command, do nothing
+    }
+    
+    if (cmd->builtin == NONE) {
+        return executeSystemCommand(cmd);
+    }
+    
+    return 0;
+}
+
+int executeSystemCommand(Command* cmd) {
+    pid_t childPid, wPid;
+    int status;
+    
+    if ((childPid = fork()) < 0) {
+        perror("fork() error");
+    } else if (childPid == 0) { // is child can execute command
+        if (execvp(cmd->argv[0], cmd->argv) < 0) {
+            printf("%s: command not found\n", cmd->argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    } else { // is parent shell continues
+        do {
+            wPid = waitpid(childPid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+    
+    return 1;
 }
 
 void tokenize_command(char* input) {
@@ -52,9 +88,7 @@ void tokenize_command(char* input) {
  
     cmd.builtin = NONE; // temporarily set cmd.builtin to NONE until builtin commands are implemented
     
-    for (int i = 0; i < cmd.argc; ++i){
-        printf("%s\n", cmd.argv[i]);
-    }
+    execute(&cmd);
 }
 
 char* read_input() {
