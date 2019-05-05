@@ -16,17 +16,24 @@ typedef struct Command {
 char prompt[] = "schell> "; // command line prompt
 
 char* read_input();
-void tokenize_command(char* input);
+void tokenize_command(char* input, Command* cmd);
 int execute(Command* cmd);
 int executeSystemCommand(Command* cmd);
 
 void poll() {
     char* input;
-    Command* cmd;
+    Command cmd;
+    int status;
     
-    printf("%s", prompt);
-    input = read_input();
-    tokenize_command(input);
+    do {
+        printf("%s", prompt);
+        input = read_input();
+        tokenize_command(input, &cmd);
+        status = execute(&cmd);
+        
+        free(input);
+        free(cmd.argv);
+    } while (status);
 }
 
 int execute(Command* cmd) {
@@ -43,12 +50,13 @@ int execute(Command* cmd) {
 }
 
 int executeSystemCommand(Command* cmd) {
+
     pid_t childPid, wPid;
     int status;
     
     if ((childPid = fork()) < 0) {
         perror("fork() error");
-    } else if (childPid == 0) { // is child can execute command
+    } else if (childPid == 0) { // is child execute command
         if (execvp(cmd->argv[0], cmd->argv) < 0) {
             printf("%s: command not found\n", cmd->argv[0]);
             exit(EXIT_FAILURE);
@@ -62,33 +70,30 @@ int executeSystemCommand(Command* cmd) {
     return 1;
 }
 
-void tokenize_command(char* input) {
+void tokenize_command(char* input, Command* cmd) {
     int bufSize = TOK_BUFSIZE;
     
-    Command cmd;
-    cmd.argc = 0;
-    cmd.argv = malloc(bufSize * sizeof(char*));
+    cmd->argc = 0;
+    cmd->argv = malloc(bufSize * sizeof(char*));
     
     char* token;
     token = strtok(input, TOK_DELIM);
     while(token != NULL) {
-        cmd.argv[cmd.argc++] = token;
+        cmd->argv[cmd->argc++] = token;
         
-        if (cmd.argc >= bufSize) {
+        if (cmd->argc >= bufSize) {
             bufSize += TOK_BUFSIZE;
-            cmd.argv = realloc(cmd.argv, bufSize);
-            if (!cmd.argv) {
+            cmd->argv = realloc(cmd->argv, bufSize);
+            if (!cmd->argv) {
                 fprintf(stderr, "token buffer reallocation error in tokenize_command()");
                 exit(EXIT_FAILURE);
             }
         }
         token = strtok(NULL, TOK_DELIM);
     }
-    cmd.argv[cmd.argc] = NULL; // last entry must always be NULL
+    cmd->argv[cmd->argc] = NULL; // last entry must always be NULL
  
-    cmd.builtin = NONE; // temporarily set cmd.builtin to NONE until builtin commands are implemented
-    
-    execute(&cmd);
+    cmd->builtin = NONE; // temporarily set cmd.builtin to NONE until builtin commands are implemented
 }
 
 char* read_input() {
