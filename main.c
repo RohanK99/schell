@@ -49,39 +49,19 @@ void tokenize_command(char* input) {
         token = strtok(NULL, TOK_DELIM);
     }
     cmd.argv[cmd.argc] = NULL; // last entry must always be NULL
+ 
+    cmd.builtin = NONE; // temporarily set cmd.builtin to NONE until builtin commands are implemented
+    
+    for (int i = 0; i < cmd.argc; ++i){
+        printf("%s\n", cmd.argv[i]);
+    }
 }
 
 char* read_input() {
-    int bufSize = LINE_BUFFER;
-    int bufIdx = 0;
-    char* buffer = malloc(sizeof(char) * bufSize);
-    int c;
-    
-    if (!buffer) {
-        fprintf(stderr, "buffer allocation error in read_input()");
-        exit(EXIT_FAILURE);
-    }
-    
-    while (1) {
-        c = getchar();
-        
-        if (c == EOF || c == '\n') {
-            buffer[bufIdx] = '\0';
-            return buffer;
-        } else {
-            buffer[bufIdx] = c;
-        }
-        ++bufIdx;
-        
-        if (bufIdx >= bufSize) {
-            bufSize += LINE_BUFFER;
-            buffer = realloc(buffer, bufSize);
-            if (!buffer) {
-                fprintf(stderr, "buffer reallocation error in read_input()");
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
+    char* input = NULL;
+    ssize_t bufSize;
+    getline(&input, &bufSize, stdin);
+    return input;
 }
 
 int main() {
