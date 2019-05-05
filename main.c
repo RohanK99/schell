@@ -98,7 +98,7 @@ void tokenize_command(char* input, Command* cmd) {
 
 char* read_input() {
     char* input = NULL;
-    ssize_t bufSize;
+    size_t bufSize;
     getline(&input, &bufSize, stdin);
     return input;
 }
