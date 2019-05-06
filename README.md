@@ -1,6 +1,5 @@
 # schell
-interactive command line shell built in C
-currently supports the following builtin functions from bash and all system commands:
+interactive command line shell built in C. Currently supports the following builtin functions from bash and all system commands:
 * cd
 * exit
 
