@@ -4,14 +4,10 @@
 #include <unistd.h> // syscalls
 #include <sys/wait.h> // waitpid
 
+#include "builtin.h"
+
 #define TOK_DELIM " \t\r\n\a"
 #define TOK_BUFSIZE 64
-
-typedef struct Command {
-    int argc;
-    char** argv;
-    enum builtin_t { NONE, QUIT, JOBS, BG, FG } builtin;
-} Command;
 
 char prompt[] = "schell> "; // command line prompt
 
@@ -42,11 +38,13 @@ int execute(Command* cmd) {
         return 1; // empty command, do nothing
     }
     
-    if (cmd->builtin == NONE) {
-        return executeSystemCommand(cmd);
+    for (int i = 0; i < num_builtins(); i++) {
+        if (strcmp(cmd->argv[0], builtin_str[i]) == 0) {
+            return (*executeBuiltinCommand[i])(cmd);
+        }
     }
     
-    return 0;
+    return executeSystemCommand(cmd);
 }
 
 int executeSystemCommand(Command* cmd) {
@@ -92,8 +90,6 @@ void tokenize_command(char* input, Command* cmd) {
         token = strtok(NULL, TOK_DELIM);
     }
     cmd->argv[cmd->argc] = NULL; // last entry must always be NULL
- 
-    cmd->builtin = NONE; // temporarily set cmd.builtin to NONE until builtin commands are implemented
 }
 
 char* read_input() {
