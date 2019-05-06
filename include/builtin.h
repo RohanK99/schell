@@ -4,15 +4,18 @@
 
 int schell_cd(Command* cmd);
 int schell_exit(Command* cmd);
+int schell_pwd(Command* cmd);
 
 char* builtin_str[] = {
     "cd",
-    "exit"
+    "exit",
+    "pwd"
 };
 
 int (*executeBuiltinCommand[])(Command*) = {
     &schell_cd,
-    &schell_exit
+    &schell_exit,
+    &schell_pwd
 };
 
 int num_builtins() {
@@ -33,4 +36,16 @@ int schell_cd(Command* cmd) {
 int schell_exit(Command* cmd) {
     UNUSED(cmd);
     return 0;
+}
+
+int schell_pwd(Command* cmd) {
+    if (cmd->argc > 1) {
+        fprintf(stderr, "pwd: too many arguments");
+    }
+    
+    char cwd[256];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        perror("getcwd() error");
+    else
+        printf("%s\n", cwd);
 }
