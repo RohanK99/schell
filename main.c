@@ -11,43 +11,7 @@
 
 char prompt[] = "schell> "; // command line prompt
 
-char* read_input();
-void tokenize_command(char* input, Command* cmd);
-int execute(Command* cmd);
-int executeSystemCommand(Command* cmd);
-
-void poll() {
-    char* input;
-    Command cmd;
-    int status;
-    
-    do {
-        printf("%s", prompt);
-        input = read_input();
-        tokenize_command(input, &cmd);
-        status = execute(&cmd);
-        
-        free(input);
-        free(cmd.argv);
-    } while (status);
-}
-
-int execute(Command* cmd) {
-    
-    if (cmd->argc == 0) {
-        return 1; // empty command, do nothing
-    }
-    
-    for (int i = 0; i < num_builtins(); i++) {
-        if (strcmp(cmd->argv[0], builtin_str[i]) == 0) {
-            return (*executeBuiltinCommand[i])(cmd);
-        }
-    }
-    
-    return executeSystemCommand(cmd);
-}
-
-int executeSystemCommand(Command* cmd) {
+int executeSystemCommand(Command* cmd, int bg) {
 
     pid_t childPid, wPid;
     int status;
@@ -60,12 +24,38 @@ int executeSystemCommand(Command* cmd) {
             exit(EXIT_FAILURE);
         }
     } else { // is parent shell continues
-        do {
-            wPid = waitpid(childPid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        if (bg) {
+            printf("Child in background [%d]\n", childPid);
+        } else {
+            do {
+                wPid = waitpid(childPid, &status, WUNTRACED);
+            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        }
     }
     
     return 1;
+}
+
+int execute(Command* cmd) {
+
+    int bg;
+    
+    if (cmd->argc == 0) {
+        return 1; // empty command, do nothing
+    }
+    
+    // check to see if command should be run in background
+    if ((bg = (*cmd->argv[cmd->argc-1] == '&')) != 0) {
+        cmd->argv[--cmd->argc] = NULL;
+    }
+    
+    for (int i = 0; i < num_builtins(); i++) {
+        if (strcmp(cmd->argv[0], builtin_str[i]) == 0) {
+            return (*executeBuiltinCommand[i])(cmd);
+        }
+    }
+    
+    return executeSystemCommand(cmd, bg);
 }
 
 void tokenize_command(char* input, Command* cmd) {
@@ -97,6 +87,22 @@ char* read_input() {
     size_t bufSize;
     getline(&input, &bufSize, stdin);
     return input;
+}
+
+void poll() {
+    char* input;
+    Command cmd;
+    int status;
+    
+    do {
+        printf("%s", prompt);
+        input = read_input();
+        tokenize_command(input, &cmd);
+        status = execute(&cmd);
+        
+        free(input);
+        free(cmd.argv);
+    } while (status);
 }
 
 int main() {
